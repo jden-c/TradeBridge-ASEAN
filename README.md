@@ -1,5 +1,7 @@
 # TradeBridge ASEAN 🚀
 
+10-Minute Pitching Video: https://youtu.be/z-q1754f6oY
+
 An automated, AI-driven cross-border pricing engine designed for Malaysian SMEs expanding into ASEAN markets. 
 
 Target User: Malaysian SMEs (e.g., F&B, retail, local manufacturers) looking to expand into ASEAN markets (Thailand, Indonesia, Philippines) via e-commerce platforms.
