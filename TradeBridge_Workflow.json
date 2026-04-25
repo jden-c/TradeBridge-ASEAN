@@ -1,0 +1,3093 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "91b37aaa-f1f0-4bcb-87f5-d82f1bb90e9c",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.exchangerate-api.com/v4/latest/MYR",
+        "options": {}
+      },
+      "id": "f072354d-9b0c-4d37-a986-7b73e1872aa7",
+      "name": "Get Forex (MYR Base)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -912,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "a2caca4c-9da4-4283-b2ae-3a061689de45",
+      "name": "Read Inventory",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -464,
+        256
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d8d3a70e-f967-418a-8405-6a3382f402cc",
+      "name": "Loop Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -240,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// This code only looks at the CURRENT input to prevent hanging\nconst rawOutput = $json.output || \"\";\n\n// Extract the JSON part from the AI's chatty response\nconst jsonMatch = rawOutput.match(/\\{[\\s\\S]*\\}/);\n\nif (jsonMatch) {\n  try {\n    const parsedData = JSON.parse(jsonMatch[0]);\n    \n    // Return the parsed data directly\n    // Because we updated the prompt, \"Item Name\" is already inside parsedData\n    return parsedData;\n  } catch (e) {\n    return {\n      \"error\": \"Failed to parse JSON\",\n      \"raw\": rawOutput\n    };\n  }\n} else {\n  return {\n    \"error\": \"No JSON found\",\n    \"raw\": rawOutput\n  };\n}"
+      },
+      "id": "32c888be-76d2-47ec-9cd2-e5a85c294908",
+      "name": "Parse LLM JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4db86d96-5a82-4593-aa74-46795eaca636",
+              "leftValue": "={{ $json.change_needed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b38c3fdb-ca4b-448e-8e00-b0d1ac92b64d",
+      "name": "Change Needed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "6140418884",
+        "text": "=<b>🚀 TradeBridge Market Update: {{ $json[\"Item Name\"] }}</b>\n\n<b>Proposed Pricing (Local Currency):</b>\n🇹🇭 THB: {{ $('Parse LLM JSON').item.json.THB }}\n🇮🇩 IDR: {{ $('Parse LLM JSON').item.json.IDR }}\n🇵🇭 PHP: {{ $('Parse LLM JSON').item.json.PHP }}\n🇸🇬 SGD: {{ $('Parse LLM JSON').item.json.SGD }}\n🇻🇳 VND: {{ $('Parse LLM JSON').item.json.VND }}\n🇧🇳 BND: {{ $('Parse LLM JSON').item.json.BND }}\n🇰🇭 KHR: {{ $('Parse LLM JSON').item.json.KHR }}\n🇱🇦 LAK: {{ $('Parse LLM JSON').item.json.LAK }}\n🇲🇲 MMK: {{ $('Parse LLM JSON').item.json.MMK }}\n\n<b>💡 Reasoning:</b>\n{{ $('Parse LLM JSON').item.json.reasoning }}\n\n<b>Status:</b> {{ $('Parse LLM JSON').item.json.change_needed ? \"⚠️ Change Suggested\" : \"✅ Stable\" }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Approve",
+                    "additionalFields": {
+                      "callback_data": "=approve\n{{ $json[\"Item Name\"] }}"
+                    }
+                  },
+                  {
+                    "text": "Reject",
+                    "additionalFields": {
+                      "callback_data": "=reject\n{{ $json[\"Item Name\"] }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "4f87b366-e930-4c4f-ac02-77f67662ca07",
+      "name": "Send Proposal via TG",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1328,
+        208
+      ],
+      "webhookId": "e60a9378-675a-42f5-b8b4-aded6a811947",
+      "credentials": {
+        "telegramApi": {
+          "id": "UgIu8cwGsl17XSno",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "188d7d97-0cae-4c56-b45b-b20de0fdc9ee",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        992
+      ],
+      "webhookId": "bbf8d6f1-134a-4cb1-87ff-3a0a00f353e2",
+      "credentials": {
+        "telegramApi": {
+          "id": "UgIu8cwGsl17XSno",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
+        "text": "=✅ Prices updated in Google Sheets for {{ $('Telegram Trigger').item.json.callback_query.data.split('\\n')[1] }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "ba0cc1bb-8b4d-4689-b66f-c63a7cee03c2",
+      "name": "Confirm Update",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        544
+      ],
+      "webhookId": "9533e183-7a64-48f9-8b0a-5838ef365289",
+      "credentials": {
+        "telegramApi": {
+          "id": "UgIu8cwGsl17XSno",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "text": "=❌ Price update rejected for {{ $json.callback_query.data.split('|')[1] }}. Maintained previous pricing.",
+        "additionalFields": {}
+      },
+      "id": "d6888bec-3978-4079-a1a6-574b1c62dc65",
+      "name": "Confirm Rejection",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        752
+      ],
+      "webhookId": "6d198b00-e040-42fc-b99f-05e9eb256225",
+      "credentials": {
+        "telegramApi": {
+          "id": "UgIu8cwGsl17XSno",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search Google for real-time competitor prices, import duties, and shipping fees in ASEAN countries. Input is a search query.",
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "<Serper API Key>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=={{ $fromAI('query', 'The search query to send to Google') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        352,
+        224
+      ],
+      "id": "f82a7cac-966f-458a-a090-594a23afd7fc",
+      "name": "Google Search"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get all rates from the previous HTTP node\nconst allRates = $input.first().json.rates;\n\n// 2. Define the only currencies we want to keep\nconst aseanCodes = [\"MYR\", \"SGD\", \"THB\", \"IDR\", \"PHP\", \"VND\", \"BND\", \"KHR\", \"LAK\", \"MMK\"];\n\n// 3. Create a clean, small object\nconst filteredRates = {};\naseanCodes.forEach(code => {\n  if (allRates[code]) {\n    filteredRates[code] = allRates[code];\n  }\n});\n\n// 4. Return the tiny object\nreturn {\n  rates: filteredRates\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        256
+      ],
+      "id": "acb9e40a-9c5e-4fd3-97c1-c953cf96c66f",
+      "name": "Filter Currencies"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $(\"Loop Items\").first().json;\nconst rates = $(\"Filter Currencies\").first().json.rates;\nconst marginMultiplier = 1.40; // Cost + 25% Duty/Shipping + 15% Margin\n\nconst floorPrices = {};\n\n// Safely calculate for all 10 countries\nfor (const [currency, rate] of Object.entries(rates)) {\n  const floorValue = item[\"Item Cost (MYR)\"] * rate * marginMultiplier;\n  // Round to 2 decimal places for clean data\n  floorPrices[currency] = parseFloat(floorValue.toFixed(2)); \n}\n\nreturn {\n  ...item,\n  \"Floor Prices\": floorPrices\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "29127544-6c3c-4677-bc2e-ba887163c88f",
+      "name": "Floor Pricing"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "ilmu-glm-5.1",
+          "mode": "list",
+          "cachedResultName": "ilmu-glm-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "maxTokens": 16384
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        224
+      ],
+      "id": "e6f5b52c-279c-4d36-a766-05a36e7c9d83",
+      "name": "GLM Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "W3JQv5eTgrmlNmNO",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please audit the following item and provide the strategic pricing JSON.\n\nITEM DATA:\n- Item Name: {{ $json[\"Item Name\"] }}\n- MYR Cost: {{ $json[\"Item Cost (MYR)\"] }}\n- Current Sheet Pricing: {{ JSON.stringify($json) }}\n\nHARD FLOOR PRICES (Cost + 25% Duty/Shipping + 15% Margin): \n{{ JSON.stringify($json[\"Floor Prices\"]) }}",
+        "options": {
+          "systemMessage": "=CRITICAL: You are a low-latency pricing engine. Skip all internal monologue. Use the tools, aggregate the data, and immediately output the JSON. If you exceed 2000 tokens of thinking, stop and output the best estimate JSON immediately.\n\nYOU ARE: \"TradeBridge ASEAN Optimizer\", a master Pricing Strategist for a Malaysian cross-border SME.\n\nYOUR MISSION:\nDo not calculate base margins; that is already done in the 'HARD FLOOR PRICES' provided by the user. Your job is pure strategy: gather market intelligence, compare it against the absolute floor, and apply psychological pricing to maximize profit.\n\nEXECUTION & SEARCH CONSTRAINTS:\n- TOOL LIMIT: Maximum of TEN (10) tool calls total.\n- PHASE 1 SEARCH: Use 1-2 searches to find competitor prices for this specific item in the target country (Shopee/Lazada).\n- PHASE 2 SEARCH: Use 1 search to check for macro trends (e.g., \"durian shortage Thailand 2026\", \"new import tariffs coffee Indonesia\").\n- STOP SEARCHING once you have enough data to make a strategic decision. Do not get stuck in a research loop. If a tool fails, - DO NOT retry; mark as unchange.\n\nTHE \"FLOOR PRICE\" GUARDRAIL (ABSOLUTE LAW):\n- The 'HARD FLOOR PRICE' provided to you is the absolute lowest price we can sell at without losing money.\n- If the market/competitor price is LOWER than our Floor Price, DO NOT match them. You must either maintain a premium price above the floor, or set the country to \"Unlisted\" if the market is unviable.\n- THE STABILITY THRESHOLD (ANTI-SEESAW RULE):\n- Once you calculate the optimal new market price, you MUST compare it to the CURRENT PRICE provided in the input.\n- If the calculated new price is within +/- 5% of the CURRENT PRICE, you MUST abandon the new price.\n- Retain the CURRENT PRICE exactly as it is, do NOT apply psychological rounding, and set \"change_needed\": false.\n- Only set \"change_needed\": true if the new optimal price represents a swing greater than 40% from the CURRENT PRICE.\n\nPRICING PSYCHOLOGY ENGINE (APPLY ONLY IF STABILITY THRESHOLD IS EXCEEDED):\n- Never output random decimals (e.g., 142.34). If and only if the price change exceeds the 5% threshold above, you must apply retail psychology to the final number:\n- Charm Pricing (Standard Items): End prices in 9, 90, 95, or 99 (e.g., 149 THB, 59,000 IDR).             \n- Prestige Pricing (Luxury/Shortage): If the item is premium (e.g., Musang King, Bird's Nest) or there is a market shortage, price it 15-20% ABOVE the market average using clean, solid numbers (e.g., 1,500 THB, 850 PHP) to signal high quality.\n\nTHE \"UNLISTED\" RULE:\n- If our current price is >10x the market rate, set to \"Unlisted\".\n- If the target market is completely unviable due to extreme local competition, set to \"Unlisted\".\n- You can raise the price to match competitor if we are priced too low.\n\nSTRICT OUTPUT RULE:\nDuring your research phase, use tools normally. However, once your research is complete, your FINAL RESPONSE must be EXACTLY one JSON object matching the schema below. Do not wrap it in markdown code blocks (```json). Just output the raw JSON starting with { and ending with }.\n\nJSON SCHEMA:\n{\n\"Item Name\": \"[Extract exactly from user data]\",\n\"THB\": \"Price or Unlisted\", \"IDR\": \"Price or Unlisted\", \"PHP\": \"Price or Unlisted\", \"SGD\": \"Price or Unlisted\", \"VND\": \"Price or Unlisted\", \"BND\": \"Price or Unlisted\", \"KHR\": \"Price or Unlisted\", \"LAK\": \"Price or Unlisted\", \"MMK\": \"Price or Unlisted\",\n\"change_needed\": [true or false],\n\"confidence_score\": 100,\n\"reasoning\": \"Executive Summary (2 sentences max). Sentence 1: State the market average found and the % variance from the CURRENT PRICE. Sentence 2: Explain if the change exceeded the 5% threshold and how you applied the guardrails/psychology.\"\n}"
+        }
+      },
+      "id": "f7027035-9ab2-420e-bf84-b5d1f604f992",
+      "name": "GLM Pricing Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        208,
+        0
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "list",
+          "cachedResultName": "TradeBridge ASEAN",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Item Name": "={{ $json[\"Item Name\"] }}",
+            "Pending THB": "={{ $json.THB }}",
+            "Pending IDR": "={{ $json.IDR }}",
+            "Pending PHP": "={{ $json.PHP }}",
+            "Pending SGD": "={{ $json.SGD }}",
+            "Pending VND": "={{ $json.VND }}",
+            "Pending BND": "={{ $json.BND }}",
+            "Pending KHR": "={{ $json.KHR }}",
+            "Pending LAK": "={{ $json.LAK }}",
+            "Pending MMK": "={{ $json.MMK }}"
+          },
+          "matchingColumns": [
+            "Item Name"
+          ],
+          "schema": [
+            {
+              "id": "Item Name",
+              "displayName": "Item Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Item Cost (MYR)",
+              "displayName": "Item Cost (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Local Price (MYR)",
+              "displayName": "Local Price (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "THB Price",
+              "displayName": "THB Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "IDR Price",
+              "displayName": "IDR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PHP Price",
+              "displayName": "PHP Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "SGD Price",
+              "displayName": "SGD Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "VND Price",
+              "displayName": "VND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "BND Price",
+              "displayName": "BND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "KHR Price",
+              "displayName": "KHR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "LAK Price",
+              "displayName": "LAK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "MMK Price",
+              "displayName": "MMK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Pending THB",
+              "displayName": "Pending THB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending IDR",
+              "displayName": "Pending IDR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending PHP",
+              "displayName": "Pending PHP",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending SGD",
+              "displayName": "Pending SGD",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending VND",
+              "displayName": "Pending VND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending BND",
+              "displayName": "Pending BND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending KHR",
+              "displayName": "Pending KHR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending LAK",
+              "displayName": "Pending LAK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending MMK",
+              "displayName": "Pending MMK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1008,
+        0
+      ],
+      "id": "849b333c-f873-416b-b970-b4ec043bf601",
+      "name": "save suggested changes price",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the input items\nconst items = $input.all();\n\nlet message = \"**TradeBridge ASEAN Inventory List**\\n\\n\";\n\n\nitems.forEach((item, index) => {\n  const data = item.json;\n  \n  // Add the Item Name in BOLD (Full length)\n  message += `${index+1}. **${data[\"Item Name\"]}**\\n`;\n});\n\nreturn { text: message };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        976
+      ],
+      "id": "5a03e08e-26c6-4c8e-9792-8c7c9f35e344",
+      "name": "Tidy Up List"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the input items\nconst items = $input.all();\n\nlet message = \"\";\n\nitems.forEach((item) => {\n  const data = item.json;\n\n  // 1. Full Item Name as Header\n  message += `*Item:* ${data[\"Item Name\"]}\\n`;\n  \n  // 2. Local Market\n  message += `*Local Price:* RM ${data[\"Local Price (MYR)\"]}\\n\\n`;\n\n  // 3. ASEAN Pricing Grid (Monospaced for alignment)\n  message += \"```\\n\";\n  message += \"Region       Price\\n\";\n  message += \"--------------------------\\n\";\n\n  // Define the regions we want to display\n  const regions = [\n    { label: \"Thailand\", key: \"THB Price\", unit: \"THB\" },\n    { label: \"Indonesia\", key: \"IDR Price\", unit: \"IDR\" },\n    { label: \"Philippines\", key: \"PHP Price\", unit: \"PHP\" },\n    { label: \"Singapore\", key: \"SGD Price\", unit: \"SGD\" },\n    { label: \"Vietnam\", key: \"VND Price\", unit: \"VND\" },\n    { label: \"Brunei\", key: \"BND Price\", unit: \"BND\" },\n    { label: \"Cambodia\", key: \"KHR Price\", unit: \"KHR\" },\n    { label: \"Laos\", key: \"LAK Price\", unit: \"LAK\" },\n    { label: \"Myanmar\", key: \"MMK Price\", unit: \"MMK\" },\n  ];\n\n  regions.forEach(region => {\n    const val = data[region.key] || \"N/A\";\n    // Aligns the label to 12 spaces and value to the right\n    message += `${region.label.padEnd(12)} ${val} ${region.unit}\\n`;\n  });\n\n  message += \"```\\n\\n\";\n});\n\nreturn { text: message };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        1136
+      ],
+      "id": "42b7354a-a526-4167-9f56-6bc6c37648f0",
+      "name": "Format Item"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "477bc701-5355-4a46-a86c-52c784bc8622",
+      "name": "Send List",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        1856
+      ],
+      "webhookId": "9533e183-7a64-48f9-8b0a-5838ef365289",
+      "credentials": {
+        "telegramApi": {
+          "id": "UgIu8cwGsl17XSno",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let message = \"*How to use this command:*\\n ```\\n• Create an item:\\n/create [Item Name], [Cost], [Local Price]\\nExample: /create Red Apples, 10, 15\\n\\n• Set price:\\n/setprice [Item Name], [Type], [Price]\\nExample: /setprice Red Apples, THB Price, 12\\n\\n• Delete an item:\\n/delete [Item Name]\\n\\n• List all items:\\n/list all\\n\\n• List specific item:\\n/list [Item Name]\\n\\n• Update Market Trend:\\n/update\\n```\\n⚠️ Note: Use commas to separate item names and prices\\nSYSTEM: If you receive this, you have outputed an invalid command, please retry!\"\n\nreturn { text: message };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        2560
+      ],
+      "id": "6b4237a5-04af-4836-bc98-980639668ad7",
+      "name": "Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "de8df510-436c-4cd3-8506-1cf9d5ac5b00",
+              "leftValue": "={{ $json.callback_query }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -832,
+        992
+      ],
+      "id": "3a2f259b-a7a4-43ed-add0-cf97c5af6f00",
+      "name": "Is Callback"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "cfb65ba8-a963-4c86-8a2c-33e5f8e7de62",
+      "name": "Read Inventory List",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -96,
+        976
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Item Name",
+              "lookupValue": "={{ $json.output.slice(6) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0b81d4ed-08da-4bab-880d-e33898a738d5",
+      "name": "Read Specific Item",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -96,
+        1136
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $('Telegram Trigger').item.json.callback_query.data.split(\"\\n\") [0] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "approve",
+              "outputKey": "Approve"
+            },
+            {
+              "value2": "reject",
+              "outputKey": "Reject"
+            }
+          ]
+        }
+      },
+      "id": "250212f8-f545-41d9-9a67-bb6f05dcb8bd",
+      "name": "Route Callback",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.output }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "regex",
+              "value2": "^\\/list\\s+all$",
+              "outputKey": "List All"
+            },
+            {
+              "operation": "regex",
+              "value2": "^\\/list\\s+(?!all$)(.+)$",
+              "outputKey": "List Item"
+            },
+            {
+              "operation": "regex",
+              "value2": "^\\/create\\s+(.+),\\s*(\\d+(?:\\.\\d+)?),\\s*(\\d+(?:\\.\\d+)?)$",
+              "outputKey": "Create"
+            },
+            {
+              "operation": "regex",
+              "value2": "^\\/delete\\s+(.+)$",
+              "outputKey": "Delete"
+            },
+            {
+              "operation": "regex",
+              "value2": "^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$",
+              "outputKey": "Set Price"
+            },
+            {
+              "value2": "/update",
+              "outputKey": "Update"
+            },
+            {
+              "operation": "startsWith",
+              "value2": "/reply",
+              "outputKey": "Reply"
+            },
+            {
+              "outputKey": "Error"
+            }
+          ]
+        },
+        "fallbackOutput": 6
+      },
+      "id": "0a8395f1-07ca-4b82-9a19-445d09022617",
+      "name": "Route Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let message = $('Read Delete Item').first().json.row_number ? `Item ${$('Read Delete Item').first().json[\"Item Name\"]} is deleted!` : `No Item ${$('Route Command').first().json.output.slice(8)} Found!`\n\nreturn { text: message };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        1616
+      ],
+      "id": "0c887eaf-3b53-4555-b148-d970d449fd18",
+      "name": "Deleted Row"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "startIndex": "={{ $json.row_number }}"
+      },
+      "id": "8ec4b904-1249-42dd-9ef4-24de60770099",
+      "name": "Delete Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        176,
+        1504
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Item Name",
+              "lookupValue": "={{ $json.output.slice(8) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c5cc278d-9255-4f52-803f-24a69f618f8d",
+      "name": "Read Delete Item",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -208,
+        1616
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9e8f4ba5-9939-4ec5-99da-a851aa561c0d",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        1616
+      ],
+      "id": "579b9b8b-3d73-41ee-bfdd-a3d004eeb715",
+      "name": "Row Exist"
+    },
+    {
+      "parameters": {
+        "jsCode": "let message = $json.output.match(/^\\/create\\s+(.+),\\s*(\\d+(?:\\.\\d+)?),\\s*(\\d+(?:\\.\\d+)?)$/)\n\nreturn {\n  \"item\" : message[1],\n  \"cost\" : message[2],\n  \"local_price\" : message[3]\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        1344
+      ],
+      "id": "3f27ff85-7d3b-418a-aed8-0e5dedc21edc",
+      "name": "Create Item"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Item Name": "={{ $json.item }}",
+            "Item Cost (MYR)": "={{ $json.cost }}",
+            "Local Price (MYR)": "={{ $json.local_price }}",
+            "THB Price": "Unlisted",
+            "IDR Price": "Unlisted",
+            "PHP Price": "Unlisted",
+            "SGD Price": "Unlisted",
+            "VND Price": "Unlisted",
+            "BND Price": "Unlisted",
+            "KHR Price": "Unlisted",
+            "LAK Price": "Unlisted",
+            "MMK Price": "Unlisted"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Item Name",
+              "displayName": "Item Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item Cost (MYR)",
+              "displayName": "Item Cost (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Local Price (MYR)",
+              "displayName": "Local Price (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "THB Price",
+              "displayName": "THB Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "IDR Price",
+              "displayName": "IDR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PHP Price",
+              "displayName": "PHP Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SGD Price",
+              "displayName": "SGD Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "VND Price",
+              "displayName": "VND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "BND Price",
+              "displayName": "BND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "KHR Price",
+              "displayName": "KHR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LAK Price",
+              "displayName": "LAK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MMK Price",
+              "displayName": "MMK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending THB",
+              "displayName": "Pending THB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending IDR",
+              "displayName": "Pending IDR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending PHP",
+              "displayName": "Pending PHP",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending SGD",
+              "displayName": "Pending SGD",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending VND",
+              "displayName": "Pending VND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending BND",
+              "displayName": "Pending BND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending KHR",
+              "displayName": "Pending KHR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending LAK",
+              "displayName": "Pending LAK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending MMK",
+              "displayName": "Pending MMK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "id": "453327ab-76ac-47c6-bff0-6109df0c923b",
+      "name": "Create Item Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        48,
+        1344
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let message = `Item ${$input.first().json[\"Item Name\"]}, Cost MYR ${$input.first().json[\"Item Cost (MYR)\"]}, Local Price MYR ${$input.first().json[\"Local Price (MYR)\"]} has been created!`\n\nreturn { text: message };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        1344
+      ],
+      "id": "726149c7-1bcf-4131-8b38-a98386b6abd8",
+      "name": "Create Row"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9e8f4ba5-9939-4ec5-99da-a851aa561c0d",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "0629214b-14a6-43ce-8832-f9d14ef5ffb4",
+              "leftValue": "={{ $('Route Command').item.json.output.match(/^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$/) ? ($('Route Command').item.json.output.match(/^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$/)[2] in $('Read Set Item').item.json) : false }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -112,
+        1840
+      ],
+      "id": "e6fc0b46-7df1-4d8c-92ec-503a1dfe5c90",
+      "name": "Row Exist1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Item Name",
+              "lookupValue": "={{ $json[\"Item Name\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3fe664e8-865c-4d67-905c-e4a45825fe61",
+      "name": "Read Set Item",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -256,
+        1840
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let message = $json.output.match(/^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$/)\n\nreturn {\n  \"Item Name\" : message[1],\n  [`${message[2]}`] : message[3],\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        1840
+      ],
+      "id": "26142d03-ee15-413d-9415-df0ffbf61f2c",
+      "name": "Set Item"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Item Name": "={{ $json[\"Item Name\"] }}",
+            "Item Cost (MYR)": "={{ $json[\"Item Cost (MYR)\"] }}",
+            "Local Price (MYR)": "={{ $json[\"Local Price (MYR)\"] }}",
+            "row_number": 0,
+            "THB Price": "={{ $json[\"THB Price\"] }}",
+            "IDR Price": "={{ $json[\"IDR Price\"] }}",
+            "PHP Price": "={{ $json[\"PHP Price\"] }}",
+            "SGD Price": "={{ $json[\"SGD Price\"] }}",
+            "VND Price": "={{ $json[\"VND Price\"] }}",
+            "BND Price": "={{ $json[\"BND Price\"] }}",
+            "KHR Price": "={{ $json[\"BND Price\"] }}",
+            "LAK Price": "={{ $json[\"LAK Price\"] }}",
+            "MMK Price": "={{ $json[\"MMK Price\"] }}",
+            "Pending THB": "={{ $json[\"Pending THB\"] }}",
+            "Pending IDR": "={{ $json[\"Pending IDR\"] }}",
+            "Pending PHP": "={{ $json[\"Pending PHP\"] }}",
+            "Pending SGD": "={{ $json[\"Pending SGD\"] }}",
+            "Pending VND": "={{ $json[\"Pending VND\"] }}",
+            "Pending BND": "={{ $json[\"Pending BND\"] }}",
+            "Pending KHR": "={{ $json[\"Pending KHR\"] }}",
+            "Pending LAK": "={{ $json[\"Pending LAK\"] }}",
+            "Pending MMK": "={{ $json[\"Pending MMK\"] }}"
+          },
+          "matchingColumns": [
+            "Item Name"
+          ],
+          "schema": [
+            {
+              "id": "Item Name",
+              "displayName": "Item Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Item Cost (MYR)",
+              "displayName": "Item Cost (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Local Price (MYR)",
+              "displayName": "Local Price (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "THB Price",
+              "displayName": "THB Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "IDR Price",
+              "displayName": "IDR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PHP Price",
+              "displayName": "PHP Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SGD Price",
+              "displayName": "SGD Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "VND Price",
+              "displayName": "VND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "BND Price",
+              "displayName": "BND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "KHR Price",
+              "displayName": "KHR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LAK Price",
+              "displayName": "LAK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MMK Price",
+              "displayName": "MMK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending THB",
+              "displayName": "Pending THB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending IDR",
+              "displayName": "Pending IDR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending PHP",
+              "displayName": "Pending PHP",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending SGD",
+              "displayName": "Pending SGD",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending VND",
+              "displayName": "Pending VND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending BND",
+              "displayName": "Pending BND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending KHR",
+              "displayName": "Pending KHR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending LAK",
+              "displayName": "Pending LAK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending MMK",
+              "displayName": "Pending MMK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "d9538845-0466-451c-95e2-65e9bc998444",
+      "name": "Set Item Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        1776
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// let row = $(\"Read Set Item\").first().json.row_number\n\n// // let keyExist =  $('Route Command').first().json.message.text.match(/^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$/) ? ($('Route Command').first().json.message.text.match(/^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$/)[2] in $(\"Read Set Item\")) : false\n\n// let message = row  ? `Item ${$('Set Item').first().json[\"Item Name\"]}, ${$('Route Command').first().json.message.text.match(/^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$/)[2]} is set to ${$('Route Command').first().json.message.text.match(/^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$/)[3]}!` : `No Item ${$('Set Item').first().json[\"Item Name\"]} Found!`\n\n// return { text: message };\n\n// 1. Get data and run regex once\nconst routeText = $(\"Route Command\").first().json.output;\nconst readSetItemJson = $(\"Read Set Item\").first().json;\nconst setItemName = $(\"Set Item\").first().json[\"Item Name\"];\nconst match = routeText.match(/^\\/setprice\\s+(.+),\\s*(.+),\\s*(\\d+(?:\\.\\d+)?)$/);\n\nconst category = match ? match[2] : null;\nconst price = match ? match[3] : null;\n\n// 2. Logic checks\nlet row = readSetItemJson.row_number;\nlet keyExist = (category && category in readSetItemJson);\n\nlet message = \"\";\n\n// 3. Determine specific error message\nif (!row) {\n  message = `Item ${setItemName} is not found.`;\n} else if (!keyExist) {\n  message = `Item ${setItemName} has no type ${category}`;\n} else {\n  message = `Item ${setItemName}, ${category} is set to ${price}!`;\n}\n\nreturn { text: message };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        1936
+      ],
+      "id": "72cdc496-b215-4c89-97ed-9f467f041c85",
+      "name": "Set Row Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Correctly reference the node data in n8n\nconst readSheetItems = $(\"Read Set Item\").all(); \nconst setItems = $(\"Set Item\").all();\n\n// Create a map for quick lookup by Item Name\nconst updateMap = new Map();\nsetItems.forEach(item => {\n  // Access the .json property of the item\n  updateMap.set(item.json[\"Item Name\"], item.json);\n});\n\n// Map over the sheet data and merge updates\nconst updatedOutput = readSheetItems.map(item => {\n  const row = item.json;\n  const updateData = updateMap.get(row[\"Item Name\"]);\n  \n  if (updateData) {\n    // Return the updated object wrapped in the required { json: ... } format\n    return {\n      json: {\n        ...row,\n        ...updateData\n      }\n    };\n  }\n  // Return the original item if no update is found\n  return item;\n});\n\nreturn updatedOutput;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        1776
+      ],
+      "id": "dd748785-eecd-4003-9ff9-faef59984d08",
+      "name": "Set Item Payload"
+    },
+    {
+      "parameters": {
+        "path": "inventory",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -944,
+        2448
+      ],
+      "id": "c418f2e6-0b69-4fb7-9098-05523e05d59d",
+      "name": "Webhook",
+      "webhookId": "84328b0c-12b8-4dcf-99cf-b2aca0763537"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "ff9caa4c-28b7-4682-af03-896e41598d76",
+      "name": "Read Inventory1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -768,
+        2448
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -352,
+        2448
+      ],
+      "id": "b7b3210f-ee0a-4216-94b8-e1eb9c47cdda",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from the previous node\nconst items = Array.isArray($input.all()) ? $input.all() : [];\n\nreturn items.map(item => {\n  // Extract the JSON data from the n8n item structure\n  const data = item.json;\n  const newObj = {};\n\n  Object.keys(data).forEach(key => {\n    // Check if key should be kept\n    if (!key.startsWith('Pending') && key !== 'row_number') {\n      newObj[key] = data[key];\n    }\n  });\n\n  return { json: newObj };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        2448
+      ],
+      "id": "39c7b281-dc97-4484-84ec-a85cda358acd",
+      "name": "Remove Pending and Row"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "list",
+          "cachedResultName": "TradeBridge ASEAN",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Item Name",
+              "lookupValue": "={{ $json.callback_query.data.split('\\n')[1]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c79359c0-f20f-4339-8a7a-7afb29667e29",
+      "name": "Read Approve",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -624,
+        688
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "list",
+          "cachedResultName": "TradeBridge ASEAN",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Item Name": "={{ $json['Item Name'] }}",
+            "Item Cost (MYR)": "={{ $json['Item Cost (MYR)'] }}",
+            "Local Price (MYR)": "={{ $json['Local Price (MYR)'] }}",
+            "THB Price": "={{ $json['Pending THB'] }}",
+            "IDR Price": "={{ $json['Pending IDR'] }}",
+            "PHP Price": "={{ $json['Pending PHP'] }}",
+            "SGD Price": "={{ $json['Pending SGD'] }}",
+            "VND Price": "={{ $json['Pending VND'] }}",
+            "BND Price": "={{ $json['Pending BND'] }}",
+            "KHR Price": "={{ $json['Pending KHR'] }}",
+            "LAK Price": "={{ $json['Pending LAK'] }}",
+            "MMK Price": "={{ $json['Pending MMK'] }}",
+            "Pending THB": "={{ \"\" }}",
+            "Pending IDR": "={{ \"\" }}",
+            "Pending SGD": "={{ \"\" }}",
+            "Pending VND": "={{ \"\" }}",
+            "Pending BND": "={{ \"\" }}",
+            "Pending KHR": "={{ \"\" }}",
+            "Pending LAK": "={{ \"\" }}",
+            "Pending MMK": "={{ \"\" }}",
+            "Pending PHP": "={{ \"\" }}"
+          },
+          "matchingColumns": [
+            "Item Name"
+          ],
+          "schema": [
+            {
+              "id": "Item Name",
+              "displayName": "Item Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Item Cost (MYR)",
+              "displayName": "Item Cost (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Local Price (MYR)",
+              "displayName": "Local Price (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "THB Price",
+              "displayName": "THB Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "IDR Price",
+              "displayName": "IDR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PHP Price",
+              "displayName": "PHP Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SGD Price",
+              "displayName": "SGD Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "VND Price",
+              "displayName": "VND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "BND Price",
+              "displayName": "BND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "KHR Price",
+              "displayName": "KHR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LAK Price",
+              "displayName": "LAK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MMK Price",
+              "displayName": "MMK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending THB",
+              "displayName": "Pending THB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending IDR",
+              "displayName": "Pending IDR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending PHP",
+              "displayName": "Pending PHP",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Pending SGD",
+              "displayName": "Pending SGD",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending VND",
+              "displayName": "Pending VND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending BND",
+              "displayName": "Pending BND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending KHR",
+              "displayName": "Pending KHR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending LAK",
+              "displayName": "Pending LAK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending MMK",
+              "displayName": "Pending MMK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -96,
+        544
+      ],
+      "id": "6114e2e5-5958-407b-9fc4-4d47c524a688",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE",
+          "mode": "list",
+          "cachedResultName": "TradeBridge ASEAN",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13WPdyEE_r6lh1zj8hFL5KzAdtzklXepbfHeg6v2zhdE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Item Name": "={{ $json['Item Name'] }}",
+            "Pending THB": "={{ \"\" }}",
+            "Pending IDR": "={{ \"\" }}",
+            "Pending SGD": "={{ \"\" }}",
+            "Pending VND": "={{ \"\" }}",
+            "Pending BND": "={{ \"\" }}",
+            "Pending KHR": "={{ \"\" }}",
+            "Pending LAK": "={{ \"\" }}",
+            "Pending MMK": "={{ \"\" }}",
+            "Pending PHP": "={{ \"\" }}"
+          },
+          "matchingColumns": [
+            "Item Name"
+          ],
+          "schema": [
+            {
+              "id": "Item Name",
+              "displayName": "Item Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Item Cost (MYR)",
+              "displayName": "Item Cost (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Local Price (MYR)",
+              "displayName": "Local Price (MYR)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "THB Price",
+              "displayName": "THB Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "IDR Price",
+              "displayName": "IDR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PHP Price",
+              "displayName": "PHP Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "SGD Price",
+              "displayName": "SGD Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "VND Price",
+              "displayName": "VND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "BND Price",
+              "displayName": "BND Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "KHR Price",
+              "displayName": "KHR Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "LAK Price",
+              "displayName": "LAK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "MMK Price",
+              "displayName": "MMK Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Pending THB",
+              "displayName": "Pending THB",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending IDR",
+              "displayName": "Pending IDR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending PHP",
+              "displayName": "Pending PHP",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Pending SGD",
+              "displayName": "Pending SGD",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending VND",
+              "displayName": "Pending VND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending BND",
+              "displayName": "Pending BND",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending KHR",
+              "displayName": "Pending KHR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending LAK",
+              "displayName": "Pending LAK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pending MMK",
+              "displayName": "Pending MMK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -96,
+        752
+      ],
+      "id": "d0704167-27b2-4afc-b62e-d1ac0c0c6741",
+      "name": "Reject Suggestion",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YqqGzcTltqON13xL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "GLM 5.1 is scanning for market trends. Update will be sent out 1 by 1 soon. Execution might take up to 20 minutes to finish. Please be patient.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "8a8d55d6-bbf4-4712-9349-986c9cfe353b",
+      "name": "Ack Update",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        -496,
+        2128
+      ],
+      "webhookId": "9533e183-7a64-48f9-8b0a-5838ef365289",
+      "credentials": {
+        "telegramApi": {
+          "id": "UgIu8cwGsl17XSno",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "=6140418884",
+        "text": "Update Done. If no approval message is sent, there is no market prices that needs to be changed!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a0da08cb-931b-41e6-a234-aad341c93e0e",
+      "name": "Done Update",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        304
+      ],
+      "webhookId": "9533e183-7a64-48f9-8b0a-5838ef365289",
+      "executeOnce": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "UgIu8cwGsl17XSno",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "0"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -624,
+        1392
+      ],
+      "id": "8e78536f-f3e3-4d48-b5e5-168cabfb3186",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "ilmu-glm-5.1",
+          "mode": "list",
+          "cachedResultName": "ilmu-glm-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "maxTokens": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -752,
+        1392
+      ],
+      "id": "ef29ffbb-7cac-40b1-a086-4836b55dacae",
+      "name": "GLM Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "W3JQv5eTgrmlNmNO",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output.slice(7) }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "98fdb864-2642-4e5a-bc3a-d9e4c082fdd2",
+      "name": "Reply User",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        128,
+        2144
+      ],
+      "webhookId": "9533e183-7a64-48f9-8b0a-5838ef365289",
+      "credentials": {
+        "telegramApi": {
+          "id": "UgIu8cwGsl17XSno",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "0"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1408,
+        2256
+      ],
+      "id": "fa80fd01-a10a-481a-959b-f9c9829c16b2",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "={{ $json.result.text }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        1264,
+        2016
+      ],
+      "id": "167a99ac-2cd3-409b-9f57-69e8115cbd6e",
+      "name": "Chat Memory Manager"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=You are the Routing Brain for TradeBridge ASEAN. Your job is to extract the user's intent from their Telegram message and convert it into a command.\n\nAvailable Actions:\n1. CREATE: Use when the user wants to add a new product. Requires: name, cost, local_price.\n2. SET_PRICE: Use when the user wants to update a specific regional price. Requires: name, type, price.\n3. DELETE: Use when the user wants to remove an item. Requires: name.\n4. LIST: Use when the user wants to see their inventory (can be 'all' or a specific 'name').\n5. UPDATE: Use when the user wants to refresh market trends or exchange rates.\n\n\nRules:\n- If information is missing (like a price for a create command), ask user for clarification with command /reply <message>.\n- Extract the product names exactly as the user wrote them, or \n- Respond ONLY with a valid command.\n\n\nExact Command Format:\n• Create an item:\n/create [Item Name], [Cost], [Local Price]\nExample: /create Red Apples, 10, 15\n• Set price:\n/setprice [Item Name], [Type], [Price]\nExample: /setprice Red Apples, THB Price, 12\nAvailable Type: Item Cost (MYR), Local Price (MYR), THB Price, IDR Price, PHP Price, SGD Price, VND Price, BND Price, KHR Price, LAK Price, MMK Price\n• Delete an item:\n/delete [Item Name]\n• List all items:\n/list all\n• List specific item:\n/list [Item Name]\n• Update Market Trend:\n/update\n• Reply to User:\n/reply [message]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -688,
+        1184
+      ],
+      "id": "d1c900f4-c73a-490c-9258-f1e8d8c624a0",
+      "name": "Routing Command",
+      "retryOnFail": true
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Get Forex (MYR Base)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Forex (MYR Base)": {
+      "main": [
+        [
+          {
+            "node": "Filter Currencies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Inventory": {
+      "main": [
+        [
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Items": {
+      "main": [
+        [
+          {
+            "node": "Done Update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Floor Pricing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse LLM JSON": {
+      "main": [
+        [
+          {
+            "node": "Change Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Change Needed?": {
+      "main": [
+        [
+          {
+            "node": "save suggested changes price",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Proposal via TG": {
+      "main": [
+        [
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Update": {
+      "main": [
+        []
+      ]
+    },
+    "Google Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "GLM Pricing Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Currencies": {
+      "main": [
+        [
+          {
+            "node": "Read Inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Floor Pricing": {
+      "main": [
+        [
+          {
+            "node": "GLM Pricing Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GLM Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "GLM Pricing Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GLM Pricing Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse LLM JSON",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "save suggested changes price": {
+      "main": [
+        [
+          {
+            "node": "Send Proposal via TG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tidy Up List": {
+      "main": [
+        [
+          {
+            "node": "Send List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Item": {
+      "main": [
+        [
+          {
+            "node": "Send List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send List": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error": {
+      "main": [
+        [
+          {
+            "node": "Routing Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Callback": {
+      "main": [
+        [
+          {
+            "node": "Read Approve",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Routing Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Inventory List": {
+      "main": [
+        [
+          {
+            "node": "Tidy Up List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Specific Item": {
+      "main": [
+        [
+          {
+            "node": "Format Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Callback": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Suggestion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    "Route Command": {
+      "main": [
+        [
+          {
+            "node": "Read Inventory List",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Specific Item",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Item",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Delete Item",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Item",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ack Update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deleted Row": {
+      "main": [
+        [
+          {
+            "node": "Send List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Row": {
+      "main": [
+        [
+          {
+            "node": "Deleted Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Delete Item": {
+      "main": [
+        [
+          {
+            "node": "Row Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Row Exist": {
+      "main": [
+        [
+          {
+            "node": "Delete Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Deleted Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Item": {
+      "main": [
+        [
+          {
+            "node": "Create Item Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Item Sheet": {
+      "main": [
+        [
+          {
+            "node": "Create Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Row": {
+      "main": [
+        [
+          {
+            "node": "Send List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Row Exist1": {
+      "main": [
+        [
+          {
+            "node": "Set Item Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Row Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Set Item": {
+      "main": [
+        [
+          {
+            "node": "Row Exist1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Item": {
+      "main": [
+        [
+          {
+            "node": "Read Set Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Item Sheet": {
+      "main": [
+        [
+          {
+            "node": "Set Row Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Row Message": {
+      "main": [
+        [
+          {
+            "node": "Send List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Item Payload": {
+      "main": [
+        [
+          {
+            "node": "Set Item Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Read Inventory1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Inventory1": {
+      "main": [
+        [
+          {
+            "node": "Remove Pending and Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Pending and Row": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Approve": {
+      "main": [
+        [
+          {
+            "node": "Route Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Confirm Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Suggestion": {
+      "main": [
+        [
+          {
+            "node": "Confirm Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ack Update": {
+      "main": [
+        [
+          {
+            "node": "Get Forex (MYR Base)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Routing Command",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GLM Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Routing Command",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply User": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routing Command": {
+      "main": [
+        [
+          {
+            "node": "Route Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "036afd684406c73705ef5c8a08f3ae25273cc3dd39c55b71fd1d5ac759cd4308"
+  }
+}
