@@ -73,8 +73,9 @@ You will configure your external APIs directly inside the workflow nodes.
 
 ## System Architecture
 
+![TradeBridge n8n Workflow](Workflow.png)
+
 ```mermaid
-![TradeBridge n8n Workflow](Workflow.jpg)
 graph TD
     User([User]) -- Telegram Commands --> TG_Bot[Telegram Bot]
     TG_Bot -- Webhook Trigger --> n8n_Router{n8n Command Router}
